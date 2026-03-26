@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import React from 'react';
 import type { NailDesign } from '@/data/juline-options';
 import { getShapePath, getColorHex, nailShapes } from '@/data/juline-options';
 
@@ -25,7 +25,7 @@ const FINGERS_COMPACT = [
 ];
 
 function DesignOverlay({ designIds, nailIdx }: { designIds: string[]; nailIdx: number }) {
-  const overlays: JSX.Element[] = [];
+  const overlays: React.ReactElement[] = [];
 
   for (const id of designIds) {
     switch (id) {
