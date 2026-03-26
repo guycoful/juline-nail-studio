@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 350 30% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 350 20% 95%;
+    --secondary-foreground: 350 30% 30%;
+    --muted: 350 15% 95%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 350 20% 95%;
+    --accent-foreground: 350 30% 30%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 350 15% 90%;
+    --input: 350 15% 90%;
+    --ring: 350 30% 55%;
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    margin: 0;
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@keyframes juline-step-enter {
+  from { opacity: 0; transform: translateX(-15px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.juline-step-enter {
+  animation: juline-step-enter 0.3s ease-out;
+}
+
+@keyframes juline-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.animate-shimmer {
+  animation: juline-shimmer 2s ease-in-out infinite;
+}
