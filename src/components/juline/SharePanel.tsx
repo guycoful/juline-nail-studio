@@ -15,7 +15,7 @@ export default function SharePanel({ design, showPrompt = false }: SharePanelPro
   const handleWhatsAppShare = () => {
     const summary = buildSummaryHe(design);
     const encoded = encodeURIComponent(summary);
-    window.open(`https://wa.me/?text=${encoded}`, '_blank');
+    window.open(`https://wa.me/972533982552?text=${encoded}`, '_blank');
   };
 
   const handleCopyPrompt = async () => {

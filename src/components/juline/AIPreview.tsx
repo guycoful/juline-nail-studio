@@ -86,15 +86,15 @@ export default function AIPreview({ design }: AIPreviewProps) {
 
   const handleWhatsAppShare = () => {
     const summary = buildSummaryHe(design);
-    const text = summary + '\n\n✨ הדמיה נוצרה ב-Juline AI Studio';
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    const text = summary + '\n\n✨ הדמיה נוצרה ב-Likjulim AI Studio';
+    window.open(`https://wa.me/972533982552?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const handleDownload = () => {
     if (!currentImage) return;
     const link = document.createElement('a');
     link.href = currentImage;
-    link.download = `juline-nail-${Date.now()}.png`;
+    link.download = `likjulim-nail-${Date.now()}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

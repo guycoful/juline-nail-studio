@@ -29,7 +29,7 @@ export default function JulineStudio() {
           <div className="flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-[#B76E79]" />
             <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-l from-[#B76E79] to-[#D4A3B0] bg-clip-text text-transparent">
-              Juline Live Nail Studio
+              Likjulim AI Nail Studio
             </h1>
           </div>
 

@@ -269,7 +269,7 @@ export function buildSummaryHe(design: NailDesign): string {
     .filter(Boolean);
   const finish = finishes.find(f => f.id === design.finish);
 
-  const lines: string[] = ['💅 הזמנת עיצוב ציפורניים - Juline Studio', ''];
+  const lines: string[] = ['💅 הזמנת עיצוב ציפורניים - Likjulim Studio', ''];
 
   if (shape) lines.push(`צורה: ${shape.nameHe}`);
   if (color) lines.push(`צבע בסיס: ${color.nameHe}`);
