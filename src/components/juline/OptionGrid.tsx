@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import type { NailShape, ColorOption, DesignOption } from '@/data/juline-options';
+import { FINGER_NAMES_HE } from '@/data/juline-options';
 
 // ===== Shape Cards =====
 
@@ -73,6 +74,44 @@ export function ColorGrid({ colors, selected, onSelect }: ColorGridProps) {
           )}>
             {color.nameHe}
           </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ===== Finger Picker (for accent nails) =====
+
+interface FingerPickerProps {
+  selected: number[];
+  onChange: (fingers: number[]) => void;
+}
+
+export function FingerPicker({ selected, onChange }: FingerPickerProps) {
+  const toggle = (idx: number) => {
+    if (selected.includes(idx)) {
+      if (selected.length > 1) onChange(selected.filter(i => i !== idx));
+    } else {
+      onChange([...selected, idx]);
+    }
+  };
+
+  return (
+    <div className="flex justify-center gap-2">
+      {FINGER_NAMES_HE.map((name, idx) => (
+        <button
+          key={idx}
+          onClick={() => toggle(idx)}
+          className={cn(
+            'flex flex-col items-center gap-1 px-3 py-2 rounded-xl border-2 text-xs transition-all',
+            'hover:scale-105 active:scale-95',
+            selected.includes(idx)
+              ? 'border-[#B76E79] bg-[#FFF0F2] text-[#8B4D57] font-semibold'
+              : 'border-gray-200 bg-white text-gray-500 hover:border-[#D4A9B0]'
+          )}
+        >
+          <span className="text-base">{['👍', '☝️', '🖕', '💍', '🤙'][idx]}</span>
+          <span>{name}</span>
         </button>
       ))}
     </div>

@@ -159,7 +159,8 @@ function FinishOverlay({ finishId, nailIdx }: { finishId: string; nailIdx: numbe
 export default function NailPreview({ design, compact = false }: NailPreviewProps) {
   const fingers = compact ? FINGERS_COMPACT : FINGERS;
   const shapePath = getShapePath(design.shape);
-  const colorHex = getColorHex(design.baseColor);
+  const baseHex = getColorHex(design.baseColor);
+  const secondaryHex = design.secondaryColor ? getColorHex(design.secondaryColor) : null;
 
   const hasDesign = design.baseColor || design.shape;
 
@@ -167,7 +168,10 @@ export default function NailPreview({ design, compact = false }: NailPreviewProp
 
   return (
     <div className={`flex items-end justify-center ${compact ? 'gap-0.5' : 'gap-1'} py-4`}>
-      {fingers.map((finger, idx) => (
+      {fingers.map((finger, idx) => {
+        const isAccent = secondaryHex && design.accentFingers.includes(idx);
+        const colorHex = isAccent ? secondaryHex : baseHex;
+        return (
         <div
           key={finger.label}
           className="flex flex-col items-center transition-all duration-500"
@@ -228,7 +232,8 @@ export default function NailPreview({ design, compact = false }: NailPreviewProp
             />
           </svg>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

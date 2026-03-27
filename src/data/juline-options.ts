@@ -24,6 +24,8 @@ export interface DesignOption {
 export interface NailDesign {
   shape: string;
   baseColor: string;
+  secondaryColor: string;
+  accentFingers: number[]; // finger indices: 0=thumb, 1=index, 2=middle, 3=ring, 4=pinky
   designElements: string[];
   style: string;
   accents: string[];
@@ -34,12 +36,16 @@ export interface NailDesign {
 export const DEFAULT_DESIGN: NailDesign = {
   shape: '',
   baseColor: '',
+  secondaryColor: '',
+  accentFingers: [3], // ring finger by default
   designElements: [],
   style: '',
   accents: [],
   finish: '',
   notes: '',
 };
+
+export const FINGER_NAMES_HE = ['אגודל', 'אצבע', 'אמה', 'קמיצה', 'זרת'];
 
 // ===== Steps =====
 
@@ -241,7 +247,14 @@ export function buildPrompt(design: NailDesign): string {
   if (shape) parts.push(`${shape.nameEn} shaped`);
   parts.push('gel nail extensions.');
 
-  if (color) parts.push(`Full even coverage of ${color.nameEn} gel polish on every nail from cuticle to free edge.`);
+  const secondaryColor = baseColors.find(c => c.id === design.secondaryColor);
+
+  if (color && secondaryColor) {
+    const accentCount = design.accentFingers.length;
+    parts.push(`${5 - accentCount} nails in ${color.nameEn} gel polish and ${accentCount} accent nail${accentCount > 1 ? 's' : ''} in ${secondaryColor.nameEn} gel polish, all with full even coverage from cuticle to free edge.`);
+  } else if (color) {
+    parts.push(`Full even coverage of ${color.nameEn} gel polish on every nail from cuticle to free edge.`);
+  }
   if (elements.length > 0)
     parts.push(`Nail art: ${elements.map(e => e!.nameEn).join(', ')}.`);
   if (style) parts.push(`${style.nameEn} aesthetic.`);
@@ -271,8 +284,11 @@ export function buildSummaryHe(design: NailDesign): string {
 
   const lines: string[] = ['💅 הזמנת עיצוב ציפורניים - Likjulim Studio', ''];
 
+  const secondaryColor = baseColors.find(c => c.id === design.secondaryColor);
+
   if (shape) lines.push(`צורה: ${shape.nameHe}`);
   if (color) lines.push(`צבע בסיס: ${color.nameHe}`);
+  if (secondaryColor) lines.push(`צבע שני: ${secondaryColor.nameHe} (${design.accentFingers.map(i => FINGER_NAMES_HE[i]).join(', ')})`);
   if (elements.length > 0)
     lines.push(`עיצוב: ${elements.map(e => e!.nameHe).join(', ')}`);
   if (style) lines.push(`סגנון: ${style.nameHe}`);

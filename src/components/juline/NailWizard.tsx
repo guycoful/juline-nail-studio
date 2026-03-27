@@ -11,8 +11,9 @@ import {
   styles,
   accents,
   finishes,
+  FINGER_NAMES_HE,
 } from '@/data/juline-options';
-import { ShapeGrid, ColorGrid, PillGrid } from './OptionGrid';
+import { ShapeGrid, ColorGrid, PillGrid, FingerPicker } from './OptionGrid';
 import SharePanel from './SharePanel';
 import AIPreview from './AIPreview';
 
@@ -89,6 +90,45 @@ export default function NailWizard({ design, setDesign }: NailWizardProps) {
               selected={design.baseColor}
               onSelect={(id) => handleSingleSelect('baseColor', id)}
             />
+
+            {/* Color combo toggle */}
+            {design.baseColor && (
+              <div className="space-y-3 pt-2 border-t border-[#F5EAEB]">
+                <button
+                  onClick={() => {
+                    if (design.secondaryColor) {
+                      setDesign(prev => ({ ...prev, secondaryColor: '', accentFingers: [3] }));
+                    } else {
+                      setDesign(prev => ({ ...prev, secondaryColor: prev.baseColor === 'black' ? 'hot-pink' : 'black' }));
+                    }
+                  }}
+                  className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-full border-2 text-sm transition-all ${
+                    design.secondaryColor
+                      ? 'border-[#B76E79] bg-[#FFF0F2] text-[#8B4D57] font-semibold'
+                      : 'border-gray-200 text-gray-500 hover:border-[#D4A9B0]'
+                  }`}
+                >
+                  <span>🎨</span>
+                  שילוב צבעים
+                </button>
+
+                {design.secondaryColor && (
+                  <div className="space-y-3">
+                    <p className="text-sm text-[#555] text-center font-medium">צבע שני:</p>
+                    <ColorGrid
+                      colors={baseColors.filter(c => c.id !== design.baseColor)}
+                      selected={design.secondaryColor}
+                      onSelect={(id) => handleSingleSelect('secondaryColor', id)}
+                    />
+                    <p className="text-sm text-[#555] text-center font-medium">על איזה אצבעות?</p>
+                    <FingerPicker
+                      selected={design.accentFingers}
+                      onChange={(fingers) => setDesign(prev => ({ ...prev, accentFingers: fingers }))}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         );
 
@@ -290,9 +330,13 @@ function SummaryView({
     ids: string[]
   ) => ids.map(id => findName(arr, id)).join(', ') || '-';
 
+  const colorValue = design.secondaryColor
+    ? `${findName(baseColors, design.baseColor)} + ${findName(baseColors, design.secondaryColor)}`
+    : findName(baseColors, design.baseColor);
+
   const rows = [
     { label: 'צורה', value: findName(nailShapes, design.shape), step: 0 },
-    { label: 'צבע בסיס', value: findName(baseColors, design.baseColor), step: 1 },
+    { label: 'צבעים', value: colorValue, step: 1 },
     { label: 'עיצוב', value: findNames(designElements, design.designElements), step: 2 },
     { label: 'סגנון', value: findName(styles, design.style), step: 3 },
     { label: 'הדגשות', value: findNames(accents, design.accents), step: 4 },

@@ -12,7 +12,7 @@ import {
   finishes,
   buildPrompt,
 } from '@/data/juline-options';
-import { ShapeGrid, ColorGrid, PillGrid } from './OptionGrid';
+import { ShapeGrid, ColorGrid, PillGrid, FingerPicker } from './OptionGrid';
 import SharePanel from './SharePanel';
 import AIPreview from './AIPreview';
 import { useToast } from '@/hooks/use-toast';
@@ -135,6 +135,40 @@ export default function StudioMode({ design, setDesign }: StudioModeProps) {
           selected={design.baseColor}
           onSelect={(id) => handleSingleSelect('baseColor', id)}
         />
+      </Section>
+
+      <Section title="שילוב צבעים (אופציונלי)">
+        <button
+          onClick={() => {
+            if (design.secondaryColor) {
+              setDesign(prev => ({ ...prev, secondaryColor: '', accentFingers: [3] }));
+            } else {
+              setDesign(prev => ({ ...prev, secondaryColor: prev.baseColor === 'black' ? 'hot-pink' : 'black' }));
+            }
+          }}
+          className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-full border-2 text-sm transition-all ${
+            design.secondaryColor
+              ? 'border-[#B76E79] bg-[#FFF0F2] text-[#8B4D57] font-semibold'
+              : 'border-gray-200 text-gray-500 hover:border-[#D4A9B0]'
+          }`}
+        >
+          <span>🎨</span>
+          {design.secondaryColor ? 'הסירי צבע שני' : 'הוסיפי צבע שני'}
+        </button>
+        {design.secondaryColor && (
+          <div className="space-y-3 mt-3">
+            <ColorGrid
+              colors={baseColors.filter(c => c.id !== design.baseColor)}
+              selected={design.secondaryColor}
+              onSelect={(id) => handleSingleSelect('secondaryColor', id)}
+            />
+            <p className="text-sm text-[#555] text-center font-medium">על איזה אצבעות?</p>
+            <FingerPicker
+              selected={design.accentFingers}
+              onChange={(fingers) => setDesign(prev => ({ ...prev, accentFingers: fingers }))}
+            />
+          </div>
+        )}
       </Section>
 
       <Section title="אלמנטים עיצוביים">
