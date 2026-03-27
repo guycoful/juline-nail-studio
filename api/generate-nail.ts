@@ -1,4 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+// Vercel provides these types at build time
+interface VercelRequest { method?: string; headers: Record<string, string | string[] | undefined>; body?: any; }
+interface VercelResponse { setHeader(k: string, v: string): VercelResponse; status(c: number): VercelResponse; json(b: any): VercelResponse; end(): VercelResponse; }
 
 // --- Rate Limiting (in-memory, per serverless instance) ---
 
