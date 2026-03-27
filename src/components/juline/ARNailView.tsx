@@ -42,13 +42,16 @@ function drawNailOverlay(
   // Finger direction angle
   const angle = Math.atan2(dy, dx);
 
-  // Nail center: between tip and DIP, slightly toward tip
-  const cx = tipX - dx * 0.4;
-  const cy = tipY - dy * 0.4;
+  // Nail center: sits on top of the last phalanx, closer to the tip
+  // The nail starts right below the tip and extends ~50% toward DIP
+  const cx = tipX - dx * 0.32;
+  const cy = tipY - dy * 0.32;
 
-  // Nail dimensions proportional to finger segment
-  const nailH = segmentLen * 0.75;
-  const nailW = segmentLen * (fingerName === 'thumb' ? 0.7 : 0.55);
+  // Nail dimensions - compact, proportional to finger segment
+  // Real nails are roughly 45% of the tip-to-DIP distance in length
+  // and about 80% of the finger width
+  const nailH = segmentLen * 0.48;
+  const nailW = segmentLen * (fingerName === 'thumb' ? 0.52 : 0.40);
 
   ctx.save();
   ctx.translate(cx, cy);
@@ -58,50 +61,58 @@ function drawNailOverlay(
   ctx.beginPath();
   drawShape(ctx, nailShape, nailW, nailH);
 
-  // Fill with base color
+  // Fill with base color - semi-transparent for natural look
   ctx.fillStyle = colorHex;
-  ctx.globalAlpha = 0.75;
+  ctx.globalAlpha = 0.7;
   ctx.fill();
 
-  // Glossy highlight
-  ctx.globalAlpha = 0.25;
-  const gradient = ctx.createRadialGradient(
-    -nailW * 0.15, -nailH * 0.15, 0,
-    0, 0, nailW * 0.5
+  // Glossy highlight - subtle shine on top-left
+  ctx.beginPath();
+  drawShape(ctx, nailShape, nailW, nailH);
+  ctx.globalAlpha = 0.2;
+  const gradient = ctx.createLinearGradient(
+    -nailW * 0.3, -nailH * 0.4,
+    nailW * 0.2, nailH * 0.2
   );
-  gradient.addColorStop(0, 'rgba(255,255,255,0.8)');
-  gradient.addColorStop(0.5, 'rgba(255,255,255,0.1)');
+  gradient.addColorStop(0, 'rgba(255,255,255,0.9)');
+  gradient.addColorStop(0.3, 'rgba(255,255,255,0.2)');
   gradient.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = gradient;
   ctx.fill();
 
-  // Outline
-  ctx.globalAlpha = 0.4;
-  ctx.strokeStyle = '#B76E79';
-  ctx.lineWidth = 1.5;
+  // Thin outline for definition
+  ctx.beginPath();
+  drawShape(ctx, nailShape, nailW, nailH);
+  ctx.globalAlpha = 0.25;
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx.lineWidth = 1;
   ctx.stroke();
 
   ctx.restore();
 }
 
 function drawShape(ctx: CanvasRenderingContext2D, shape: string, w: number, h: number) {
+  // y: -h/2 = free edge (tip), +h/2 = cuticle (base)
   const hw = w / 2;
   const hh = h / 2;
 
   switch (shape) {
     case 'almond':
+      // Smooth taper to rounded point
       ctx.moveTo(0, -hh);
-      ctx.bezierCurveTo(hw * 1.1, -hh * 0.4, hw, hh * 0.4, hw, hh);
+      ctx.bezierCurveTo(hw * 0.9, -hh * 0.5, hw, hh * 0.1, hw, hh);
       ctx.lineTo(-hw, hh);
-      ctx.bezierCurveTo(-hw, hh * 0.4, -hw * 1.1, -hh * 0.4, 0, -hh);
+      ctx.bezierCurveTo(-hw, hh * 0.1, -hw * 0.9, -hh * 0.5, 0, -hh);
       break;
 
     case 'oval':
-      ctx.ellipse(0, 0, hw, hh, 0, 0, Math.PI * 2);
+      // Classic rounded oval
+      ctx.ellipse(0, hh * 0.1, hw, hh * 0.9, 0, 0, Math.PI * 2);
       break;
 
     case 'square': {
-      const r = hw * 0.12;
+      // Flat top with slight corner rounding
+      const r = hw * 0.15;
       ctx.moveTo(-hw + r, -hh);
       ctx.lineTo(hw - r, -hh);
       ctx.arcTo(hw, -hh, hw, -hh + r, r);
@@ -113,23 +124,26 @@ function drawShape(ctx: CanvasRenderingContext2D, shape: string, w: number, h: n
     }
 
     case 'coffin':
-      ctx.moveTo(-hw * 0.55, -hh);
-      ctx.lineTo(hw * 0.55, -hh);
-      ctx.lineTo(hw, hh);
+      // Tapered sides with flat top - smooth curves
+      ctx.moveTo(-hw * 0.5, -hh);
+      ctx.lineTo(hw * 0.5, -hh);
+      ctx.bezierCurveTo(hw * 0.7, -hh * 0.3, hw, hh * 0.3, hw, hh);
       ctx.lineTo(-hw, hh);
-      ctx.closePath();
+      ctx.bezierCurveTo(-hw, hh * 0.3, -hw * 0.7, -hh * 0.3, -hw * 0.5, -hh);
       break;
 
     case 'stiletto':
+      // Sharp pointed tip
       ctx.moveTo(0, -hh);
-      ctx.bezierCurveTo(hw * 0.8, -hh * 0.2, hw, hh * 0.35, hw * 0.9, hh);
-      ctx.lineTo(-hw * 0.9, hh);
-      ctx.bezierCurveTo(-hw, hh * 0.35, -hw * 0.8, -hh * 0.2, 0, -hh);
+      ctx.bezierCurveTo(hw * 0.6, -hh * 0.3, hw, hh * 0.2, hw, hh);
+      ctx.lineTo(-hw, hh);
+      ctx.bezierCurveTo(-hw, hh * 0.2, -hw * 0.6, -hh * 0.3, 0, -hh);
       break;
 
     case 'short-natural':
     default:
-      ctx.ellipse(0, hh * 0.05, hw, hh * 0.85, 0, 0, Math.PI * 2);
+      // Short, wide, barely curved
+      ctx.ellipse(0, hh * 0.15, hw, hh * 0.85, 0, 0, Math.PI * 2);
       break;
   }
 }
