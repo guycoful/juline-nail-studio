@@ -11,8 +11,7 @@ interface ARNailViewProps {
   onClose: () => void;
 }
 
-// MediaPipe landmark indices per finger
-// MCP = base knuckle, PIP = middle joint, DIP = last joint, TIP = fingertip
+// MediaPipe landmark indices
 const FINGERS = [
   { tip: 4, dip: 3, pip: 2, mcp: 1, name: 'thumb' },
   { tip: 8, dip: 7, pip: 6, mcp: 5, name: 'index' },
@@ -21,165 +20,181 @@ const FINGERS = [
   { tip: 20, dip: 19, pip: 18, mcp: 17, name: 'pinky' },
 ];
 
-// ===== Nail geometry calculation =====
+// ===== Math helpers =====
 
-interface Point { x: number; y: number; z: number }
-
-function lerp(a: number, b: number, t: number) {
-  return a + (b - a) * t;
-}
-
-function dist2d(ax: number, ay: number, bx: number, by: number) {
+function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
+function dist(ax: number, ay: number, bx: number, by: number) {
   return Math.sqrt((ax - bx) ** 2 + (ay - by) ** 2);
 }
 
-/**
- * Calculate nail position, size, and angle from finger landmarks.
- *
- * The nail plate sits on the dorsal (back) surface of the last phalanx.
- * It starts just past the DIP joint and extends to slightly before the fingertip.
- *
- * We use TIP, DIP, and PIP to determine:
- * - Direction of the finger (angle)
- * - Position of the nail center
- * - Approximate nail size based on phalanx length
- */
-function calculateNailGeometry(
-  tip: Point, dip: Point, pip: Point,
-  canvasW: number, canvasH: number,
-  isMirrored: boolean,
-  fingerName: string,
-) {
-  // Convert normalized landmarks to pixel coordinates
-  const tx = (isMirrored ? 1 - tip.x : tip.x) * canvasW;
-  const ty = tip.y * canvasH;
-  const dx = (isMirrored ? 1 - dip.x : dip.x) * canvasW;
-  const dy = dip.y * canvasH;
-  const px = (isMirrored ? 1 - pip.x : pip.x) * canvasW;
-  const py = pip.y * canvasH;
-
-  // Phalanx length (TIP to DIP in pixels)
-  const phalanxLen = dist2d(tx, ty, dx, dy);
-  if (phalanxLen < 8) return null; // too small
-
-  // Finger direction (from DIP toward TIP)
-  const dirX = tx - dx;
-  const dirY = ty - dy;
-  const angle = Math.atan2(dirY, dirX);
-
-  // --- Nail center ---
-  // The nail center sits about 40% from TIP toward DIP
-  // (slightly past the midpoint of the nail plate, which runs from ~DIP to ~TIP)
-  const centerX = lerp(tx, dx, 0.40);
-  const centerY = lerp(ty, dy, 0.40);
-
-  // --- Nail size ---
-  // Real nail plate is about 55% of the last phalanx length
-  // and has a width:height ratio of roughly 1:1 to 1:1.2
-  const nailLength = phalanxLen * 0.52;
-
-  // Width based on finger type (thumb is wider)
-  let widthRatio = 0.72; // default nail aspect ratio
-  if (fingerName === 'thumb') widthRatio = 1.0;
-  if (fingerName === 'pinky') widthRatio = 0.65;
-  const nailWidth = nailLength * widthRatio;
-
-  // --- Z-depth check: skip if nail is facing away ---
-  // When palm is up (fingers curl toward camera), tip.z > dip.z significantly
-  // This means the nail is on the far side and shouldn't be shown
-  const zDiff = tip.z - dip.z;
-  if (zDiff > 0.04) return null; // nail facing away from camera
-
-  return { centerX, centerY, angle, nailLength, nailWidth };
+// Convert hex color to rgba string
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
 }
 
-// ===== Nail rendering =====
+// ===== Temporal smoothing =====
+// Averages landmark positions over multiple frames to reduce jitter
 
-function renderNail(
+interface SmoothPoint { x: number; y: number }
+
+class LandmarkSmoother {
+  private buffers = new Map<string, SmoothPoint[]>();
+  private bufferSize: number;
+
+  constructor(bufferSize = 4) {
+    this.bufferSize = bufferSize;
+  }
+
+  smooth(key: string, x: number, y: number): SmoothPoint {
+    let buf = this.buffers.get(key);
+    if (!buf) { buf = []; this.buffers.set(key, buf); }
+    buf.push({ x, y });
+    if (buf.length > this.bufferSize) buf.shift();
+
+    const sx = buf.reduce((s, p) => s + p.x, 0) / buf.length;
+    const sy = buf.reduce((s, p) => s + p.y, 0) / buf.length;
+    return { x: sx, y: sy };
+  }
+
+  clear() { this.buffers.clear(); }
+}
+
+// ===== Nail geometry =====
+
+interface NailGeo {
+  cx: number; cy: number;
+  angle: number;
+  w: number; h: number;
+}
+
+function calculateNailGeo(
+  tip: SmoothPoint, dip: SmoothPoint, pip: SmoothPoint,
+  fingerName: string,
+  tipZ: number, dipZ: number,
+): NailGeo | null {
+  const phalanxLen = dist(tip.x, tip.y, dip.x, dip.y);
+  if (phalanxLen < 10) return null;
+
+  // Z-depth: skip if nail faces away (palm up)
+  if (tipZ - dipZ > 0.035) return null;
+
+  // Direction from DIP to TIP
+  const angle = Math.atan2(tip.y - dip.y, tip.x - dip.x);
+
+  // Nail center: 42% from TIP toward DIP (center of nail plate)
+  const cx = lerp(tip.x, dip.x, 0.42);
+  const cy = lerp(tip.y, dip.y, 0.42);
+
+  // Nail size based on phalanx length
+  const h = phalanxLen * 0.50;
+  let wRatio = 0.70;
+  if (fingerName === 'thumb') wRatio = 0.95;
+  if (fingerName === 'pinky') wRatio = 0.62;
+  const w = h * wRatio;
+
+  return { cx, cy, angle, w, h };
+}
+
+// ===== Professional nail rendering =====
+// Uses 'color' blend mode to preserve real nail texture/lighting
+// and concentric shapes for soft feathered edges
+
+// Feathering passes: from outside (transparent) to inside (opaque)
+const FEATHER_PASSES = [
+  { scale: 1.15, alpha: 0.10 },
+  { scale: 1.08, alpha: 0.20 },
+  { scale: 1.02, alpha: 0.35 },
+  { scale: 0.96, alpha: 0.55 },
+  { scale: 0.90, alpha: 0.72 },
+  { scale: 0.84, alpha: 0.85 },
+];
+
+function renderNailPro(
   ctx: CanvasRenderingContext2D,
-  cx: number, cy: number,
-  angle: number,
-  nailW: number, nailH: number,
+  geo: NailGeo,
   colorHex: string,
   shape: string,
 ) {
+  const { cx, cy, angle, w, h } = geo;
+
   ctx.save();
   ctx.translate(cx, cy);
-  // Rotate so the nail long axis aligns with finger direction
-  // +PI/2 because finger direction is along X-axis but nail is drawn along Y-axis
   ctx.rotate(angle + Math.PI / 2);
 
-  // === Layer 1: Base color ===
+  // === Main color: 'color' blend mode ===
+  // Preserves the real nail's luminosity (lighting, shadows, texture)
+  // while replacing hue/saturation with our chosen color
+  ctx.globalCompositeOperation = 'color';
+
+  for (const pass of FEATHER_PASSES) {
+    ctx.globalAlpha = pass.alpha;
+    ctx.beginPath();
+    traceNailShape(ctx, shape, w * pass.scale, h * pass.scale);
+    ctx.closePath();
+    ctx.fillStyle = colorHex;
+    ctx.fill();
+  }
+
+  // === Saturation boost: 'multiply' pass ===
+  // Adds color density, especially for vivid colors
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.globalAlpha = 0.12;
   ctx.beginPath();
-  traceNailShape(ctx, shape, nailW, nailH);
+  traceNailShape(ctx, shape, w * 0.85, h * 0.85);
   ctx.closePath();
-
-  // Soft shadow under the nail for depth
-  ctx.shadowColor = 'rgba(0,0,0,0.15)';
-  ctx.shadowBlur = 3;
-  ctx.shadowOffsetX = 1;
-  ctx.shadowOffsetY = 1;
-
-  ctx.globalAlpha = 0.78;
   ctx.fillStyle = colorHex;
   ctx.fill();
 
-  // Reset shadow
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 0;
-
-  // === Layer 2: Glossy highlight ===
+  // === Glossy highlight: 'screen' pass ===
+  // Simulates the curved reflective surface of nail polish
+  ctx.globalCompositeOperation = 'screen';
+  const hw = w / 2;
+  const hh = h / 2;
+  const gloss = ctx.createLinearGradient(-hw * 0.4, -hh * 0.8, hw * 0.3, hh * 0.4);
+  gloss.addColorStop(0, 'rgba(255,255,255,0.35)');
+  gloss.addColorStop(0.2, 'rgba(255,255,255,0.12)');
+  gloss.addColorStop(0.5, 'rgba(255,255,255,0)');
+  gloss.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = 0.6;
   ctx.beginPath();
-  traceNailShape(ctx, shape, nailW, nailH);
+  traceNailShape(ctx, shape, w * 0.78, h * 0.78);
   ctx.closePath();
-
-  const hw = nailW / 2;
-  const hh = nailH / 2;
-  // Diagonal highlight from top-left
-  const glossGrad = ctx.createLinearGradient(-hw * 0.6, -hh * 0.6, hw * 0.4, hh * 0.6);
-  glossGrad.addColorStop(0, 'rgba(255,255,255,0.45)');
-  glossGrad.addColorStop(0.25, 'rgba(255,255,255,0.12)');
-  glossGrad.addColorStop(0.6, 'rgba(255,255,255,0)');
-  glossGrad.addColorStop(1, 'rgba(0,0,0,0.05)');
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = glossGrad;
+  ctx.fillStyle = gloss;
   ctx.fill();
 
-  // === Layer 3: Edge highlight (thin white line along top edge) ===
+  // === Subtle specular dot (the "wet gel" shine) ===
+  ctx.globalCompositeOperation = 'screen';
+  ctx.globalAlpha = 0.25;
+  const specGrad = ctx.createRadialGradient(
+    -hw * 0.2, -hh * 0.35, 0,
+    -hw * 0.2, -hh * 0.35, w * 0.25
+  );
+  specGrad.addColorStop(0, 'rgba(255,255,255,0.7)');
+  specGrad.addColorStop(0.4, 'rgba(255,255,255,0.15)');
+  specGrad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = specGrad;
   ctx.beginPath();
-  traceNailShape(ctx, shape, nailW * 0.85, nailH * 0.85);
+  traceNailShape(ctx, shape, w * 0.7, h * 0.7);
   ctx.closePath();
-  ctx.globalAlpha = 0.08;
-  ctx.strokeStyle = 'white';
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  ctx.fill();
 
-  // === Layer 4: Outer contour ===
-  ctx.beginPath();
-  traceNailShape(ctx, shape, nailW, nailH);
-  ctx.closePath();
-  ctx.globalAlpha = 0.15;
-  ctx.strokeStyle = 'rgba(60,30,30,0.5)';
-  ctx.lineWidth = 0.8;
-  ctx.stroke();
-
+  // Reset
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
   ctx.restore();
 }
 
-/**
- * Trace nail shape path on canvas.
- * Coordinates: y = -h/2 is the free edge (tip), y = +h/2 is cuticle (base).
- * All shapes have the cuticle (base) edge straight/flat.
- */
+// ===== Nail shape paths =====
+
 function traceNailShape(ctx: CanvasRenderingContext2D, shape: string, w: number, h: number) {
   const hw = w / 2;
   const hh = h / 2;
 
   switch (shape) {
     case 'almond':
-      // Gently tapered to a soft point at the free edge
       ctx.moveTo(0, -hh);
       ctx.bezierCurveTo(hw * 0.85, -hh * 0.55, hw, hh * 0.15, hw, hh);
       ctx.lineTo(-hw, hh);
@@ -187,7 +202,6 @@ function traceNailShape(ctx: CanvasRenderingContext2D, shape: string, w: number,
       break;
 
     case 'oval':
-      // Rounded top, straight sides merging to base
       ctx.moveTo(0, -hh);
       ctx.bezierCurveTo(hw * 1.1, -hh * 0.4, hw, hh * 0.2, hw, hh);
       ctx.lineTo(-hw, hh);
@@ -195,8 +209,7 @@ function traceNailShape(ctx: CanvasRenderingContext2D, shape: string, w: number,
       break;
 
     case 'square': {
-      // Flat free edge with slight corner rounding
-      const r = Math.min(hw * 0.18, 4);
+      const r = Math.min(hw * 0.15, 4);
       ctx.moveTo(-hw + r, -hh);
       ctx.lineTo(hw - r, -hh);
       ctx.arcTo(hw, -hh, hw, -hh + r, r);
@@ -208,11 +221,9 @@ function traceNailShape(ctx: CanvasRenderingContext2D, shape: string, w: number,
     }
 
     case 'coffin': {
-      // Tapered sides then flat top
-      const flat = hw * 0.52; // flat portion width at top
+      const flat = hw * 0.52;
       ctx.moveTo(-flat, -hh);
       ctx.lineTo(flat, -hh);
-      // Smooth taper from flat top to full width at base
       ctx.bezierCurveTo(hw * 0.85, -hh * 0.2, hw, hh * 0.4, hw, hh);
       ctx.lineTo(-hw, hh);
       ctx.bezierCurveTo(-hw, hh * 0.4, -hw * 0.85, -hh * 0.2, -flat, -hh);
@@ -220,7 +231,6 @@ function traceNailShape(ctx: CanvasRenderingContext2D, shape: string, w: number,
     }
 
     case 'stiletto':
-      // Very pointed free edge
       ctx.moveTo(0, -hh);
       ctx.bezierCurveTo(hw * 0.5, -hh * 0.35, hw, hh * 0.15, hw, hh);
       ctx.lineTo(-hw, hh);
@@ -229,7 +239,6 @@ function traceNailShape(ctx: CanvasRenderingContext2D, shape: string, w: number,
 
     case 'short-natural':
     default:
-      // Short, wide, barely protruding past fingertip
       ctx.ellipse(0, hh * 0.1, hw, hh * 0.9, 0, 0, Math.PI * 2);
       break;
   }
@@ -243,6 +252,7 @@ export default function ARNailView({ design, onClose }: ARNailViewProps) {
   const animFrameRef = useRef<number>(0);
   const handLandmarkerRef = useRef<any>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const smootherRef = useRef(new LandmarkSmoother(4));
 
   const [state, setState] = useState<ARState>('loading');
   const [errorMsg, setErrorMsg] = useState('');
@@ -252,11 +262,9 @@ export default function ARNailView({ design, onClose }: ARNailViewProps) {
   const colorHex = getColorHex(design.baseColor);
   const nailShape = design.shape || 'oval';
 
-  // Initialize MediaPipe HandLandmarker
   const initMediaPipe = useCallback(async () => {
     try {
       setState('loading');
-
       const vision = await import('@mediapipe/tasks-vision');
       const { HandLandmarker, FilesetResolver } = vision;
 
@@ -282,24 +290,19 @@ export default function ARNailView({ design, onClose }: ARNailViewProps) {
     }
   }, []);
 
-  // Start camera
   const startCamera = useCallback(async () => {
     try {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop());
       }
+      smootherRef.current.clear();
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
+        video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
 
       streamRef.current = stream;
-
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
@@ -318,13 +321,12 @@ export default function ARNailView({ design, onClose }: ARNailViewProps) {
     }
   }, [facingMode]);
 
-  // Detection + render loop
   const renderLoop = useCallback(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    const handLandmarker = handLandmarkerRef.current;
+    const hl = handLandmarkerRef.current;
 
-    if (!video || !canvas || !handLandmarker || video.readyState < 2) {
+    if (!video || !canvas || !hl || video.readyState < 2) {
       animFrameRef.current = requestAnimationFrame(renderLoop);
       return;
     }
@@ -334,10 +336,10 @@ export default function ARNailView({ design, onClose }: ARNailViewProps) {
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-
     const isFront = facingMode === 'user';
+    const smoother = smootherRef.current;
 
-    // Draw video frame (mirrored for front camera)
+    // Draw camera frame
     ctx.save();
     if (isFront) {
       ctx.scale(-1, 1);
@@ -347,34 +349,37 @@ export default function ARNailView({ design, onClose }: ARNailViewProps) {
     }
     ctx.restore();
 
-    // Hand detection
-    const results = handLandmarker.detectForVideo(video, performance.now());
+    // Detect hands
+    const results = hl.detectForVideo(video, performance.now());
 
     if (results.landmarks && results.landmarks.length > 0) {
       setHandDetected(true);
 
-      for (const hand of results.landmarks) {
-        for (const finger of FINGERS) {
-          const tip = hand[finger.tip];
-          const dip = hand[finger.dip];
-          const pip = hand[finger.pip];
+      for (let hi = 0; hi < results.landmarks.length; hi++) {
+        const hand = results.landmarks[hi];
 
-          const geo = calculateNailGeometry(
-            tip, dip, pip,
-            canvas.width, canvas.height,
-            isFront,
-            finger.name,
-          );
+        for (const finger of FINGERS) {
+          const rawTip = hand[finger.tip];
+          const rawDip = hand[finger.dip];
+          const rawPip = hand[finger.pip];
+
+          // Convert to pixel coords (mirror X for front camera)
+          const toX = (v: number) => (isFront ? 1 - v : v) * canvas.width;
+          const toY = (v: number) => v * canvas.height;
+
+          // Apply temporal smoothing
+          const tipKey = `${hi}-${finger.name}-tip`;
+          const dipKey = `${hi}-${finger.name}-dip`;
+          const pipKey = `${hi}-${finger.name}-pip`;
+
+          const tip = smoother.smooth(tipKey, toX(rawTip.x), toY(rawTip.y));
+          const dip = smoother.smooth(dipKey, toX(rawDip.x), toY(rawDip.y));
+          const pip = smoother.smooth(pipKey, toX(rawPip.x), toY(rawPip.y));
+
+          const geo = calculateNailGeo(tip, dip, pip, finger.name, rawTip.z, rawDip.z);
 
           if (geo) {
-            renderNail(
-              ctx,
-              geo.centerX, geo.centerY,
-              geo.angle,
-              geo.nailWidth, geo.nailLength,
-              colorHex,
-              nailShape,
-            );
+            renderNailPro(ctx, geo, colorHex, nailShape);
           }
         }
       }
@@ -387,31 +392,19 @@ export default function ARNailView({ design, onClose }: ARNailViewProps) {
 
   // Lifecycle
   useEffect(() => {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setState('no-support');
-      return;
-    }
+    if (!navigator.mediaDevices?.getUserMedia) { setState('no-support'); return; }
     initMediaPipe();
-
     return () => {
       cancelAnimationFrame(animFrameRef.current);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
-      }
-      if (handLandmarkerRef.current?.close) {
-        handLandmarkerRef.current.close();
-      }
+      streamRef.current?.getTracks().forEach(t => t.stop());
+      handLandmarkerRef.current?.close?.();
     };
   }, [initMediaPipe]);
 
-  useEffect(() => {
-    if (state === 'camera') startCamera();
-  }, [state, startCamera]);
+  useEffect(() => { if (state === 'camera') startCamera(); }, [state, startCamera]);
 
   useEffect(() => {
-    if (state === 'running') {
-      animFrameRef.current = requestAnimationFrame(renderLoop);
-    }
+    if (state === 'running') animFrameRef.current = requestAnimationFrame(renderLoop);
     return () => cancelAnimationFrame(animFrameRef.current);
   }, [state, renderLoop]);
 
@@ -424,43 +417,33 @@ export default function ARNailView({ design, onClose }: ARNailViewProps) {
     <div className="fixed inset-0 z-[100] bg-black flex flex-col">
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/60 to-transparent">
-        <Button
-          onClick={onClose}
-          variant="ghost"
-          size="icon"
-          className="text-white hover:bg-white/20 rounded-full w-10 h-10"
-        >
+        <Button onClick={onClose} variant="ghost" size="icon"
+          className="text-white hover:bg-white/20 rounded-full w-10 h-10">
           <X className="w-6 h-6" />
         </Button>
-
         <div className="text-white text-center">
           <span className="text-sm font-bold">Juline AR</span>
           <span className="text-xs block opacity-70">נסי את העיצוב על היד שלך</span>
         </div>
-
-        <Button
-          onClick={handleFlipCamera}
-          variant="ghost"
-          size="icon"
+        <Button onClick={handleFlipCamera} variant="ghost" size="icon"
           className="text-white hover:bg-white/20 rounded-full w-10 h-10"
-          disabled={state !== 'running'}
-        >
+          disabled={state !== 'running'}>
           <SwitchCamera className="w-5 h-5" />
         </Button>
       </div>
 
-      {/* Camera view */}
+      {/* Camera */}
       <div className="flex-1 relative flex items-center justify-center overflow-hidden">
         <video ref={videoRef} className="hidden" playsInline muted />
         <canvas ref={canvasRef} className="w-full h-full object-contain" />
 
-        {state === 'loading' && <LoadingOverlay text="טוענת את מנוע ה-AR..." />}
-        {state === 'camera' && <LoadingOverlay text="פותחת מצלמה..." />}
+        {state === 'loading' && <Overlay text="טוענת את מנוע ה-AR..." />}
+        {state === 'camera' && <Overlay text="פותחת מצלמה..." />}
         {state === 'error' && (
-          <ErrorOverlay message={errorMsg} onRetry={() => initMediaPipe()} onClose={onClose} />
+          <ErrorOverlay msg={errorMsg} onRetry={() => initMediaPipe()} onClose={onClose} />
         )}
         {state === 'no-support' && (
-          <ErrorOverlay message="הדפדפן לא תומך במצלמה. נסי בכרום." onClose={onClose} />
+          <ErrorOverlay msg="הדפדפן לא תומך במצלמה. נסי בכרום." onClose={onClose} />
         )}
 
         {state === 'running' && !handDetected && (
@@ -473,19 +456,15 @@ export default function ARNailView({ design, onClose }: ARNailViewProps) {
         )}
       </div>
 
-      {/* Bottom bar */}
-      {state === 'running' && (
+      {/* Bottom */}
+      {state === 'running' && design.baseColor && (
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
           <div className="flex justify-center">
-            {design.baseColor && (
-              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1.5">
-                <div
-                  className="w-4 h-4 rounded-full border border-white/40"
-                  style={{ backgroundColor: colorHex }}
-                />
-                <span className="text-white text-xs">{design.shape || 'oval'}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1.5">
+              <div className="w-4 h-4 rounded-full border border-white/40"
+                style={{ backgroundColor: colorHex }} />
+              <span className="text-white text-xs">{design.shape || 'oval'}</span>
+            </div>
           </div>
         </div>
       )}
@@ -493,9 +472,7 @@ export default function ARNailView({ design, onClose }: ARNailViewProps) {
   );
 }
 
-// ===== Sub-components =====
-
-function LoadingOverlay({ text }: { text: string }) {
+function Overlay({ text }: { text: string }) {
   return (
     <div className="absolute inset-0 bg-gradient-to-b from-[#1a0a10] to-[#2a1020] flex flex-col items-center justify-center gap-4">
       <div className="relative">
@@ -508,28 +485,16 @@ function LoadingOverlay({ text }: { text: string }) {
   );
 }
 
-function ErrorOverlay({
-  message, onRetry, onClose,
-}: {
-  message: string;
-  onRetry?: () => void;
-  onClose: () => void;
-}) {
+function ErrorOverlay({ msg, onRetry, onClose }: { msg: string; onRetry?: () => void; onClose: () => void }) {
   return (
     <div className="absolute inset-0 bg-gradient-to-b from-[#1a0a10] to-[#2a1020] flex flex-col items-center justify-center gap-4 px-8">
       <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center">
         <X className="w-8 h-8 text-red-400" />
       </div>
-      <p className="text-white/80 text-sm text-center">{message}</p>
+      <p className="text-white/80 text-sm text-center">{msg}</p>
       <div className="flex gap-3">
-        {onRetry && (
-          <Button onClick={onRetry} className="bg-[#B76E79] hover:bg-[#A05D67] text-white">
-            נסי שוב
-          </Button>
-        )}
-        <Button onClick={onClose} variant="outline" className="border-white/30 text-white hover:bg-white/10">
-          חזרה
-        </Button>
+        {onRetry && <Button onClick={onRetry} className="bg-[#B76E79] hover:bg-[#A05D67] text-white">נסי שוב</Button>}
+        <Button onClick={onClose} variant="outline" className="border-white/30 text-white hover:bg-white/10">חזרה</Button>
       </div>
     </div>
   );
