@@ -56,11 +56,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'grok-2-image',
+        model: 'grok-imagine-image',
         prompt,
         n: 1,
         response_format: 'b64_json',
-        size: '1024x1536',
       }),
     });
 
@@ -80,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({
       image,
-      mimeType: 'image/png',
+      mimeType: 'image/jpeg',
     });
   } catch (err) {
     console.error('Generation error:', err);
