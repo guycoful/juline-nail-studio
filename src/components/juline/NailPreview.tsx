@@ -175,17 +175,20 @@ export default function NailPreview({ design, compact = false }: NailPreviewProp
             transform: `rotate(${finger.rot}deg) translateY(${finger.ty}px)`,
           }}
         >
-          {/* Nail */}
+          {/* Nail + finger as single SVG */}
           <svg
-            viewBox="0 0 60 90"
+            viewBox="0 0 60 130"
             width={finger.w}
-            height={finger.h}
+            height={compact ? finger.h * 1.35 : finger.h * 1.4}
             className="transition-all duration-500"
             style={{ filter: hasDesign ? 'none' : 'saturate(0.3)' }}
           >
             <defs>
               <clipPath id={`nail-clip-${idx}`}>
                 <path d={shapePath} />
+              </clipPath>
+              <clipPath id={`finger-clip-${idx}`}>
+                <rect x="4" y="85" width="52" height="45" rx="10" />
               </clipPath>
               {design.designElements.includes('ombre') && (
                 <linearGradient id={`ombre-${idx}`} x1="0" y1="0" x2="0" y2="1">
@@ -195,14 +198,15 @@ export default function NailPreview({ design, compact = false }: NailPreviewProp
               )}
             </defs>
 
+            {/* Finger body (behind nail) */}
+            <rect x="4" y="85" width="52" height="45" rx="10" fill={skinTone} />
+            <rect x="4" y="85" width="52" height="45" rx="10"
+              fill="none" stroke="#E8CDBE" strokeWidth="1" />
+
+            {/* Nail */}
             <g clipPath={`url(#nail-clip-${idx})`}>
-              {/* Base color */}
               <rect x="0" y="0" width="60" height="90" fill={colorHex} />
-
-              {/* Design overlay */}
               <DesignOverlay designIds={design.designElements} nailIdx={idx} />
-
-              {/* Finish overlay */}
               <FinishOverlay finishId={design.finish} nailIdx={idx} />
             </g>
 
@@ -213,21 +217,16 @@ export default function NailPreview({ design, compact = false }: NailPreviewProp
               stroke={hasDesign ? '#D4A9B0' : '#CCC'}
               strokeWidth="1.5"
             />
-          </svg>
 
-          {/* Finger body */}
-          <div
-            className="rounded-b-xl transition-all duration-500"
-            style={{
-              width: finger.w - 4,
-              height: compact ? finger.h * 0.35 : finger.h * 0.4,
-              backgroundColor: skinTone,
-              marginTop: -2,
-              borderLeft: '1px solid #E8CDBE',
-              borderRight: '1px solid #E8CDBE',
-              borderBottom: '1px solid #E8CDBE',
-            }}
-          />
+            {/* Cuticle line */}
+            <path
+              d="M 6 88 Q 30 82 54 88"
+              fill="none"
+              stroke="#E0BFB5"
+              strokeWidth="1.2"
+              opacity="0.7"
+            />
+          </svg>
         </div>
       ))}
     </div>

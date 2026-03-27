@@ -233,25 +233,25 @@ export function buildPrompt(design: NailDesign): string {
     .filter(Boolean);
   const finish = finishes.find(f => f.id === design.finish);
 
-  // Structured prompt optimized for Imagen 3 photorealism
+  // Structured prompt optimized for photorealistic nail photography
   const parts: string[] = [
-    'Ultra-realistic close-up photograph of a woman\'s elegant hand with professionally done',
+    'Professional nail salon editorial photograph. Close-up of one elegant female hand showing all five fingers with perfectly manicured',
   ];
 
   if (shape) parts.push(`${shape.nameEn} shaped`);
-  parts.push('gel nails.');
+  parts.push('gel nail extensions.');
 
-  if (color) parts.push(`${color.nameEn} gel polish base color.`);
+  if (color) parts.push(`Full even coverage of ${color.nameEn} gel polish on every nail from cuticle to free edge.`);
   if (elements.length > 0)
-    parts.push(`Nail art design: ${elements.map(e => e!.nameEn).join(', ')}.`);
-  if (style) parts.push(`Overall ${style.nameEn} aesthetic.`);
+    parts.push(`Nail art: ${elements.map(e => e!.nameEn).join(', ')}.`);
+  if (style) parts.push(`${style.nameEn} aesthetic.`);
   if (accentItems.length > 0 && accentItems[0]!.id !== 'none')
-    parts.push(`Accent details: ${accentItems.map(a => a!.nameEn).join(', ')}.`);
-  if (finish) parts.push(`${finish.nameEn} finish.`);
+    parts.push(`Embellishments: ${accentItems.map(a => a!.nameEn).join(', ')}.`);
+  if (finish) parts.push(`${finish.nameEn} topcoat finish.`);
   if (design.notes) parts.push(`Special request: ${design.notes}.`);
 
   parts.push(
-    'Professional nail salon photography, soft diffused studio lighting, shallow depth of field with creamy bokeh background, elegant presentation on white marble surface, 4K detail, photorealistic quality.'
+    'Anatomically correct hand with natural finger proportions. Soft diffused studio lighting, shallow depth of field, blurred bokeh background, white marble surface. Magazine editorial quality. Absolutely no text, no watermarks, no logos, no letters, no writing anywhere in the image.'
   );
 
   return parts.join(' ');
