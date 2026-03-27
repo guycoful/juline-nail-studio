@@ -84,9 +84,28 @@ export default function AIPreview({ design }: AIPreviewProps) {
     }
   };
 
-  const handleWhatsAppShare = () => {
+  const handleWhatsAppShare = async () => {
     const summary = buildSummaryHe(design);
     const text = summary + '\n\n✨ הדמיה נוצרה ב-Likjulim AI Studio';
+
+    // Try Web Share API with image (works on mobile)
+    if (currentImage && navigator.share && navigator.canShare) {
+      try {
+        const res = await fetch(currentImage);
+        const blob = await res.blob();
+        const file = new File([blob], `likjulim-nail-${Date.now()}.jpg`, { type: 'image/jpeg' });
+
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ text, files: [file] });
+          return;
+        }
+      } catch (err: any) {
+        // User cancelled or share failed - fall through to wa.me
+        if (err.name === 'AbortError') return;
+      }
+    }
+
+    // Fallback: text-only via wa.me
     window.open(`https://wa.me/972533982552?text=${encodeURIComponent(text)}`, '_blank');
   };
 
