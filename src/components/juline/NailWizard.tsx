@@ -14,6 +14,7 @@ import {
 } from '@/data/juline-options';
 import { ShapeGrid, ColorGrid, PillGrid } from './OptionGrid';
 import SharePanel from './SharePanel';
+import AIPreview from './AIPreview';
 
 interface NailWizardProps {
   design: NailDesign;
@@ -159,6 +160,7 @@ export default function NailWizard({ design, setDesign }: NailWizardProps) {
                 dir="rtl"
               />
             </div>
+            <AIPreview design={design} />
             <SharePanel design={design} />
           </div>
         );

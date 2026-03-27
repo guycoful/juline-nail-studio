@@ -233,20 +233,26 @@ export function buildPrompt(design: NailDesign): string {
     .filter(Boolean);
   const finish = finishes.find(f => f.id === design.finish);
 
+  // Structured prompt optimized for Imagen 3 photorealism
   const parts: string[] = [
-    'Professional gel nail art photography, close-up of a beautiful hand.',
+    'Ultra-realistic close-up photograph of a woman\'s elegant hand with professionally done',
   ];
 
-  if (shape) parts.push(`${shape.nameEn} shaped nails.`);
-  if (color) parts.push(`Base color: ${color.nameEn} gel.`);
+  if (shape) parts.push(`${shape.nameEn} shaped`);
+  parts.push('gel nails.');
+
+  if (color) parts.push(`${color.nameEn} gel polish base color.`);
   if (elements.length > 0)
-    parts.push(`Design: ${elements.map(e => e!.nameEn).join(', ')}.`);
-  if (style) parts.push(`${style.nameEn} style.`);
+    parts.push(`Nail art design: ${elements.map(e => e!.nameEn).join(', ')}.`);
+  if (style) parts.push(`Overall ${style.nameEn} aesthetic.`);
   if (accentItems.length > 0 && accentItems[0]!.id !== 'none')
     parts.push(`Accent details: ${accentItems.map(a => a!.nameEn).join(', ')}.`);
   if (finish) parts.push(`${finish.nameEn} finish.`);
-  parts.push('Studio lighting, soft bokeh background, elegant presentation.');
-  if (design.notes) parts.push(`Additional notes: ${design.notes}`);
+  if (design.notes) parts.push(`Special request: ${design.notes}.`);
+
+  parts.push(
+    'Professional nail salon photography, soft diffused studio lighting, shallow depth of field with creamy bokeh background, elegant presentation on white marble surface, 4K detail, photorealistic quality.'
+  );
 
   return parts.join(' ');
 }

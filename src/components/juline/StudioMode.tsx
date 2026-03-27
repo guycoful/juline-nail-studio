@@ -14,6 +14,7 @@ import {
 } from '@/data/juline-options';
 import { ShapeGrid, ColorGrid, PillGrid } from './OptionGrid';
 import SharePanel from './SharePanel';
+import AIPreview from './AIPreview';
 import { useToast } from '@/hooks/use-toast';
 
 interface StudioModeProps {
@@ -219,6 +220,9 @@ export default function StudioMode({ design, setDesign }: StudioModeProps) {
           {prompt}
         </div>
       </div>
+
+      {/* AI Preview */}
+      <AIPreview design={design} />
 
       {/* Share */}
       <SharePanel design={design} showPrompt={false} />

@@ -1,5 +1,5 @@
-import { useState, lazy, Suspense } from 'react';
-import { Sparkles, Wrench, RotateCcw, Camera } from 'lucide-react';
+import { useState } from 'react';
+import { Sparkles, Wrench, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import type { NailDesign } from '@/data/juline-options';
@@ -7,15 +7,13 @@ import { DEFAULT_DESIGN } from '@/data/juline-options';
 import NailPreview from '@/components/juline/NailPreview';
 import NailWizard from '@/components/juline/NailWizard';
 import StudioMode from '@/components/juline/StudioMode';
-
-const ARNailView = lazy(() => import('@/components/juline/ARNailView'));
+import AIPreview from '@/components/juline/AIPreview';
 
 type Mode = 'client' | 'studio';
 
 export default function JulineStudio() {
   const [mode, setMode] = useState<Mode>('client');
   const [design, setDesign] = useState<NailDesign>({ ...DEFAULT_DESIGN });
-  const [showAR, setShowAR] = useState(false);
 
   const handleReset = () => {
     setDesign({ ...DEFAULT_DESIGN });
@@ -25,13 +23,6 @@ export default function JulineStudio() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FFF8F9] to-[#FFF0F2]" dir="rtl">
-      {/* AR Fullscreen Overlay */}
-      {showAR && (
-        <Suspense fallback={null}>
-          <ARNailView design={design} onClose={() => setShowAR(false)} />
-        </Suspense>
-      )}
-
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-[#F0E0E2]">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -79,16 +70,6 @@ export default function JulineStudio() {
           {/* Sticky preview for mobile */}
           <div className="sticky top-[57px] z-40 bg-white/90 backdrop-blur-sm rounded-2xl border border-[#F0E0E2] shadow-sm p-2">
             <NailPreview design={design} compact />
-            {hasSelections && (
-              <Button
-                onClick={() => setShowAR(true)}
-                className="w-full mt-1 bg-gradient-to-l from-[#B76E79] to-[#D4A3B0] hover:from-[#A05D67] hover:to-[#C4929D] text-white gap-2 text-sm h-9"
-                size="sm"
-              >
-                <Camera className="w-4 h-4" />
-                נסי על היד שלך - AR
-              </Button>
-            )}
           </div>
 
           {/* Wizard or Studio */}
@@ -138,16 +119,11 @@ export default function JulineStudio() {
                 </div>
               </div>
 
-              {/* AR button for desktop */}
+              {/* AI Preview for desktop */}
               {hasSelections && (
-                <Button
-                  onClick={() => setShowAR(true)}
-                  className="w-full mt-3 bg-gradient-to-l from-[#B76E79] to-[#D4A3B0] hover:from-[#A05D67] hover:to-[#C4929D] text-white gap-2"
-                  size="lg"
-                >
-                  <Camera className="w-5 h-5" />
-                  נסי על היד שלך - AR
-                </Button>
+                <div className="mt-3">
+                  <AIPreview design={design} />
+                </div>
               )}
 
               {/* Reset button for desktop */}
