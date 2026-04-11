@@ -6,7 +6,9 @@ const DEMO_KEY = 'juline-demo-start';
 const DEMO_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
 function isDemoMode(): boolean {
-  return new URLSearchParams(window.location.search).has('demo');
+  const params = new URLSearchParams(window.location.search);
+  // Full access only with ?key=juline2026
+  return !params.has('key') || params.get('key') !== 'juline2026';
 }
 
 function getDemoStart(): number | null {
