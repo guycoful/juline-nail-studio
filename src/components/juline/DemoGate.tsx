@@ -3,12 +3,14 @@ import { Sparkles, Clock, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const DEMO_KEY = 'juline-demo-start';
-const DEMO_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+const DEMO_DURATION_MS = 2 * 60 * 1000; // 2 minutes
 
 function isDemoMode(): boolean {
+  // Check if admin is logged in
+  if (localStorage.getItem('juline-admin') === 'true') return false;
   const params = new URLSearchParams(window.location.search);
-  // Full access only with ?key=juline2026
-  return !params.has('key') || params.get('key') !== 'juline2026';
+  if (params.has('key') && params.get('key') === 'juline2026') return false;
+  return true;
 }
 
 function getDemoStart(): number | null {
