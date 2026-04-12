@@ -1,6 +1,8 @@
+import { useState } from 'react';
+import { HexColorPicker } from 'react-colorful';
 import { cn } from '@/lib/utils';
 import type { NailShape, ColorOption, DesignOption } from '@/data/juline-options';
-import { FINGER_NAMES_HE } from '@/data/juline-options';
+import { FINGER_NAMES_HE, isCustomColor, getCustomHex } from '@/data/juline-options';
 
 // ===== Shape Cards =====
 
@@ -49,6 +51,9 @@ interface ColorGridProps {
 }
 
 export function ColorGrid({ colors, selected, onSelect }: ColorGridProps) {
+  const customSelected = isCustomColor(selected);
+  const customHex = customSelected ? getCustomHex(selected) : null;
+
   return (
     <div className="flex flex-wrap gap-3 justify-center">
       {colors.map((color) => (
@@ -76,6 +81,64 @@ export function ColorGrid({ colors, selected, onSelect }: ColorGridProps) {
           </span>
         </button>
       ))}
+      {/* Show custom color swatch when selected */}
+      {customSelected && customHex && (
+        <div className="flex flex-col items-center gap-1.5">
+          <div
+            className="w-12 h-12 rounded-full border-2 ring-2 ring-[#B76E79] ring-offset-2 border-[#B76E79] scale-110"
+            style={{ backgroundColor: customHex }}
+          />
+          <span className="text-[11px] leading-tight text-center max-w-[56px] text-[#B76E79] font-semibold">
+            מותאם
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===== Color Wheel Picker =====
+
+interface ColorWheelPickerProps {
+  selected: string;
+  onSelect: (id: string) => void;
+}
+
+export function ColorWheelPicker({ selected, onSelect }: ColorWheelPickerProps) {
+  const [open, setOpen] = useState(false);
+  const currentHex = isCustomColor(selected) ? getCustomHex(selected) : '#B76E79';
+
+  return (
+    <div className="space-y-3">
+      <button
+        onClick={() => setOpen(!open)}
+        className={cn(
+          'w-full flex items-center justify-center gap-2 py-2.5 rounded-full border-2 text-sm transition-all',
+          open || isCustomColor(selected)
+            ? 'border-[#B76E79] bg-[#FFF0F2] text-[#8B4D57] font-semibold'
+            : 'border-gray-200 text-gray-500 hover:border-[#D4A9B0]'
+        )}
+      >
+        <span className="text-lg">🎨</span>
+        {open ? 'סגרי מכחול' : 'בחרי צבע מהמכחול'}
+      </button>
+
+      {open && (
+        <div className="flex flex-col items-center gap-3 py-3">
+          <HexColorPicker
+            color={currentHex}
+            onChange={(hex) => onSelect(`custom-${hex}`)}
+            style={{ width: '100%', maxWidth: 260, height: 200 }}
+          />
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-full border-2 border-[#B76E79] shadow-inner"
+              style={{ backgroundColor: currentHex }}
+            />
+            <span className="text-sm font-mono text-[#555]" dir="ltr">{currentHex.toUpperCase()}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

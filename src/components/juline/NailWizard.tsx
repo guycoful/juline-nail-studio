@@ -1,28 +1,31 @@
 import { useState, useCallback, useRef } from 'react';
-import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { ChevronRight, ChevronLeft, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import type { NailDesign } from '@/data/juline-options';
 import {
   STEPS,
   nailShapes,
+  nailLengths,
   baseColors,
   designElements,
   styles,
   accents,
   finishes,
   FINGER_NAMES_HE,
+  resolveColor,
 } from '@/data/juline-options';
-import { ShapeGrid, ColorGrid, PillGrid, FingerPicker } from './OptionGrid';
+import { ShapeGrid, ColorGrid, ColorWheelPicker, PillGrid, FingerPicker } from './OptionGrid';
 import SharePanel from './SharePanel';
 import AIPreview from './AIPreview';
 
 interface NailWizardProps {
   design: NailDesign;
   setDesign: React.Dispatch<React.SetStateAction<NailDesign>>;
+  onReset?: () => void;
 }
 
-export default function NailWizard({ design, setDesign }: NailWizardProps) {
+export default function NailWizard({ design, setDesign, onReset }: NailWizardProps) {
   const [step, setStep] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -84,9 +87,25 @@ export default function NailWizard({ design, setDesign }: NailWizardProps) {
       case 1:
         return (
           <div className="space-y-4">
-            <StepHeader title="איזה צבע בסיס?" subtitle="בחרי את הצבע הראשי" />
+            <StepHeader title="באיזה אורך?" subtitle="בחרי את אורך הציפורן" />
+            <PillGrid
+              options={nailLengths}
+              selected={design.length}
+              onSelect={(id) => handleSingleSelect('length', id)}
+            />
+          </div>
+        );
+
+      case 2:
+        return (
+          <div className="space-y-4">
+            <StepHeader title="איזה צבע בסיס?" subtitle="בחרי מהצבעים או מהמכחול" />
             <ColorGrid
               colors={baseColors}
+              selected={design.baseColor}
+              onSelect={(id) => handleSingleSelect('baseColor', id)}
+            />
+            <ColorWheelPicker
               selected={design.baseColor}
               onSelect={(id) => handleSingleSelect('baseColor', id)}
             />
@@ -132,7 +151,7 @@ export default function NailWizard({ design, setDesign }: NailWizardProps) {
           </div>
         );
 
-      case 2:
+      case 3:
         return (
           <div className="space-y-4">
             <StepHeader title="אלמנטים עיצוביים" subtitle="בחרי אחד או יותר (או דלגי)" />
@@ -145,7 +164,7 @@ export default function NailWizard({ design, setDesign }: NailWizardProps) {
           </div>
         );
 
-      case 3:
+      case 4:
         return (
           <div className="space-y-4">
             <StepHeader title="באיזה סגנון?" subtitle="בחרי את הוייב הכללי" />
@@ -157,7 +176,7 @@ export default function NailWizard({ design, setDesign }: NailWizardProps) {
           </div>
         );
 
-      case 4:
+      case 5:
         return (
           <div className="space-y-4">
             <StepHeader title="פרטי הדגשה" subtitle="בחרי תוספות מיוחדות (אפשר כמה!)" />
@@ -170,7 +189,7 @@ export default function NailWizard({ design, setDesign }: NailWizardProps) {
           </div>
         );
 
-      case 5:
+      case 6:
         return (
           <div className="space-y-4">
             <StepHeader title="פיניש" subtitle="איך תרצי שזה ירגיש?" />
@@ -182,7 +201,7 @@ export default function NailWizard({ design, setDesign }: NailWizardProps) {
           </div>
         );
 
-      case 6:
+      case 7:
         return (
           <div className="space-y-5">
             <StepHeader title="סיכום העיצוב שלך" subtitle="בדקי שהכל נראה טוב" />
@@ -202,6 +221,17 @@ export default function NailWizard({ design, setDesign }: NailWizardProps) {
             </div>
             <AIPreview design={design} />
             <SharePanel design={design} />
+            {onReset && (
+              <Button
+                onClick={() => { onReset(); setStep(0); }}
+                variant="outline"
+                className="w-full border-[#E8D5D5] text-[#888] hover:bg-[#FFF8F9] hover:text-[#B76E79] gap-2 mt-2"
+                size="lg"
+              >
+                <RotateCcw className="w-4 h-4" />
+                התחל מחדש
+              </Button>
+            )}
           </div>
         );
 
@@ -330,17 +360,20 @@ function SummaryView({
     ids: string[]
   ) => ids.map(id => findName(arr, id)).join(', ') || '-';
 
+  const resolveColorName = (id: string) => resolveColor(id)?.nameHe || '-';
+
   const colorValue = design.secondaryColor
-    ? `${findName(baseColors, design.baseColor)} + ${findName(baseColors, design.secondaryColor)}`
-    : findName(baseColors, design.baseColor);
+    ? `${resolveColorName(design.baseColor)} + ${resolveColorName(design.secondaryColor)}`
+    : resolveColorName(design.baseColor);
 
   const rows = [
     { label: 'צורה', value: findName(nailShapes, design.shape), step: 0 },
-    { label: 'צבעים', value: colorValue, step: 1 },
-    { label: 'עיצוב', value: findNames(designElements, design.designElements), step: 2 },
-    { label: 'סגנון', value: findName(styles, design.style), step: 3 },
-    { label: 'הדגשות', value: findNames(accents, design.accents), step: 4 },
-    { label: 'פיניש', value: findName(finishes, design.finish), step: 5 },
+    { label: 'אורך', value: findName(nailLengths, design.length), step: 1 },
+    { label: 'צבעים', value: colorValue, step: 2 },
+    { label: 'עיצוב', value: findNames(designElements, design.designElements), step: 3 },
+    { label: 'סגנון', value: findName(styles, design.style), step: 4 },
+    { label: 'הדגשות', value: findNames(accents, design.accents), step: 5 },
+    { label: 'פיניש', value: findName(finishes, design.finish), step: 6 },
   ];
 
   return (

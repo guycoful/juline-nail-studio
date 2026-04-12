@@ -5,14 +5,16 @@ import { Textarea } from '@/components/ui/textarea';
 import type { NailDesign } from '@/data/juline-options';
 import {
   nailShapes,
+  nailLengths,
   baseColors,
   designElements,
   styles,
   accents,
   finishes,
   buildPrompt,
+  resolveColor,
 } from '@/data/juline-options';
-import { ShapeGrid, ColorGrid, PillGrid, FingerPicker } from './OptionGrid';
+import { ShapeGrid, ColorGrid, ColorWheelPicker, PillGrid, FingerPicker } from './OptionGrid';
 import SharePanel from './SharePanel';
 import AIPreview from './AIPreview';
 import { useToast } from '@/hooks/use-toast';
@@ -99,7 +101,8 @@ export default function StudioMode({ design, setDesign }: StudioModeProps) {
   const handleSaveDesignAsNote = () => {
     const summary = [
       design.shape && `צורה: ${nailShapes.find(s => s.id === design.shape)?.nameHe}`,
-      design.baseColor && `צבע: ${baseColors.find(c => c.id === design.baseColor)?.nameHe}`,
+      design.length && `אורך: ${nailLengths.find(l => l.id === design.length)?.nameHe}`,
+      design.baseColor && `צבע: ${resolveColor(design.baseColor)?.nameHe}`,
       design.designElements.length > 0 && `עיצוב: ${design.designElements.map(id => designElements.find(e => e.id === id)?.nameHe).join(', ')}`,
       design.style && `סגנון: ${styles.find(s => s.id === design.style)?.nameHe}`,
       design.accents.length > 0 && `הדגשות: ${design.accents.map(id => accents.find(a => a.id === id)?.nameHe).join(', ')}`,
@@ -129,9 +132,21 @@ export default function StudioMode({ design, setDesign }: StudioModeProps) {
         />
       </Section>
 
+      <Section title="אורך ציפורן">
+        <PillGrid
+          options={nailLengths}
+          selected={design.length}
+          onSelect={(id) => handleSingleSelect('length', id)}
+        />
+      </Section>
+
       <Section title="צבע בסיס">
         <ColorGrid
           colors={baseColors}
+          selected={design.baseColor}
+          onSelect={(id) => handleSingleSelect('baseColor', id)}
+        />
+        <ColorWheelPicker
           selected={design.baseColor}
           onSelect={(id) => handleSingleSelect('baseColor', id)}
         />

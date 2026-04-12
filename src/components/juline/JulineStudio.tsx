@@ -75,7 +75,7 @@ export default function JulineStudio() {
           {/* Wizard or Studio */}
           <div className="bg-white rounded-2xl border border-[#F0E0E2] shadow-sm p-4">
             {mode === 'client' ? (
-              <NailWizard design={design} setDesign={setDesign} />
+              <NailWizard design={design} setDesign={setDesign} onReset={handleReset} />
             ) : (
               <StudioMode design={design} setDesign={setDesign} />
             )}
@@ -87,7 +87,7 @@ export default function JulineStudio() {
           {/* Left: wizard/studio (scrollable) */}
           <div className="bg-white rounded-2xl border border-[#F0E0E2] shadow-sm p-6 min-h-[600px]">
             {mode === 'client' ? (
-              <NailWizard design={design} setDesign={setDesign} />
+              <NailWizard design={design} setDesign={setDesign} onReset={handleReset} />
             ) : (
               <StudioMode design={design} setDesign={setDesign} />
             )}
@@ -106,6 +106,9 @@ export default function JulineStudio() {
                 <div className="mt-4 pt-4 border-t border-[#F5EAEB] space-y-1">
                   {design.shape && (
                     <QuickInfo label="צורה" value={design.shape} />
+                  )}
+                  {design.length && (
+                    <QuickInfo label="אורך" value={design.length} />
                   )}
                   {design.baseColor && (
                     <QuickInfo label="צבע" value={design.baseColor} />
