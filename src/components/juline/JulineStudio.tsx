@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Wrench, RotateCcw } from 'lucide-react';
+import { Sparkles, Wrench, RotateCcw, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import type { NailDesign } from '@/data/juline-options';
@@ -34,6 +34,22 @@ export default function JulineStudio() {
           </div>
 
           <div className="flex items-center gap-3">
+            {localStorage.getItem('juline-admin') === 'true' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  localStorage.removeItem('juline-admin');
+                  localStorage.removeItem('juline-demo-start');
+                  window.location.reload();
+                }}
+                className="text-gray-400 hover:text-red-500 gap-1"
+              >
+                <LogOut className="w-4 h-4" />
+                התנתק
+              </Button>
+            )}
+
             <Button
               variant="ghost"
               size="sm"
