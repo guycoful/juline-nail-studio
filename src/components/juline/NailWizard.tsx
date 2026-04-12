@@ -139,6 +139,10 @@ export default function NailWizard({ design, setDesign, onReset }: NailWizardPro
                       selected={design.secondaryColor}
                       onSelect={(id) => handleSingleSelect('secondaryColor', id)}
                     />
+                    <ColorWheelPicker
+                      selected={design.secondaryColor}
+                      onSelect={(id) => handleSingleSelect('secondaryColor', id)}
+                    />
                     <p className="text-sm text-[#555] text-center font-medium">על איזה אצבעות?</p>
                     <FingerPicker
                       selected={design.accentFingers}
