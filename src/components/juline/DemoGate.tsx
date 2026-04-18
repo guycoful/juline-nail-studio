@@ -1,85 +1,50 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Sparkles, Clock, Lock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect } from 'react'
+import { Sparkles, Lock } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+import { MAX_FREE_DESIGNS, FREE_COUNT_KEY } from '@/lib/constants'
 
-const DEMO_KEY = 'juline-demo-start';
-const DEMO_DURATION_MS = 2 * 60 * 1000; // 2 minutes
-
-function isDemoMode(): boolean {
-  // Check if admin is logged in
-  if (localStorage.getItem('juline-admin') === 'true') return false;
-  const params = new URLSearchParams(window.location.search);
-  if (params.has('key') && params.get('key') === 'juline2026') return false;
-  return true;
+function getFreeCount(): number {
+  return parseInt(localStorage.getItem(FREE_COUNT_KEY) || '0', 10)
 }
 
-function getDemoStart(): number | null {
-  const stored = localStorage.getItem(DEMO_KEY);
-  return stored ? Number(stored) : null;
-}
-
-function formatTime(ms: number): string {
-  const totalSec = Math.max(0, Math.ceil(ms / 1000));
-  const min = Math.floor(totalSec / 60);
-  const sec = totalSec % 60;
-  return `${min}:${sec.toString().padStart(2, '0')}`;
+function isAdminOrBypass(): boolean {
+  if (localStorage.getItem('juline-admin') === 'true') return true
+  const params = new URLSearchParams(window.location.search)
+  return params.get('key') === 'juline2026'
 }
 
 interface DemoGateProps {
-  children: React.ReactNode;
+  children: React.ReactNode
 }
 
 export default function DemoGate({ children }: DemoGateProps) {
-  const [remaining, setRemaining] = useState<number>(DEMO_DURATION_MS);
-  const [expired, setExpired] = useState(false);
-
-  const demo = isDemoMode();
-
-  const initDemo = useCallback(() => {
-    if (!demo) return;
-    let start = getDemoStart();
-    if (!start) {
-      start = Date.now();
-      localStorage.setItem(DEMO_KEY, String(start));
-    }
-    const elapsed = Date.now() - start;
-    if (elapsed >= DEMO_DURATION_MS) {
-      setExpired(true);
-      setRemaining(0);
-    } else {
-      setRemaining(DEMO_DURATION_MS - elapsed);
-    }
-  }, [demo]);
+  const [state, setState] = useState<'loading' | 'free' | 'paid' | 'locked'>('loading')
+  const [freeLeft, setFreeLeft] = useState(MAX_FREE_DESIGNS)
 
   useEffect(() => {
-    initDemo();
-  }, [initDemo]);
+    async function check() {
+      if (isAdminOrBypass()) { setState('paid'); return }
 
-  useEffect(() => {
-    if (!demo || expired) return;
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) { setState('paid'); return }
 
-    const interval = setInterval(() => {
-      const start = getDemoStart();
-      if (!start) return;
+      const used = getFreeCount()
+      const left = Math.max(0, MAX_FREE_DESIGNS - used)
+      setFreeLeft(left)
+      setState(left > 0 ? 'free' : 'locked')
+    }
+    check()
+  }, [])
 
-      const left = DEMO_DURATION_MS - (Date.now() - start);
-      if (left <= 0) {
-        setExpired(true);
-        setRemaining(0);
-        clearInterval(interval);
-      } else {
-        setRemaining(left);
-      }
-    }, 1000);
+  if (state === 'loading') {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#FFF8F9] to-[#FFF0F2] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#B76E79] border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
-    return () => clearInterval(interval);
-  }, [demo, expired]);
-
-  // Not demo mode - render normally
-  if (!demo) return <>{children}</>;
-
-  // Expired - lock screen
-  if (expired) {
+  if (state === 'locked') {
     return (
       <div className="fixed inset-0 z-[100] bg-gradient-to-b from-[#FFF8F9] to-[#FFF0F2] flex items-center justify-center p-6" dir="rtl">
         <div className="bg-white rounded-3xl border border-[#F0E0E2] shadow-2xl p-8 max-w-sm w-full text-center space-y-6">
@@ -88,47 +53,55 @@ export default function DemoGate({ children }: DemoGateProps) {
           </div>
 
           <div>
-            <h2 className="text-xl font-bold text-[#333]">הדמו הסתיים</h2>
+            <h2 className="text-xl font-bold text-[#333]">ניצלת את ההדמיות החינמיות</h2>
             <p className="text-gray-500 mt-2 text-sm leading-relaxed">
-              נהנית ? תארי לעצמך את זה אצלך בסטודיו -
-              <br />
-              הלקוחות בוחרות עיצוב ורואות הדמיה תוך שניות
+              כדי להמשיך ליצור הדמיות AI מקצועיות, צרי חשבון וקני חבילה
             </p>
           </div>
 
           <div className="space-y-3">
-            <Button
-              onClick={() => window.open('https://wa.me/972533982552?text=' + encodeURIComponent('היי, ניסיתי את הדמו של AI Nail Studio ואני מתעניינת!'), '_blank')}
-              className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white gap-2 h-12 text-base font-semibold"
-              size="lg"
+            <button
+              onClick={() => window.location.href = '/signup'}
+              className="w-full py-3 bg-[#B76E79] text-white rounded-xl font-semibold hover:bg-[#A05D67] transition-colors flex items-center justify-center gap-2"
             >
-              <Sparkles className="w-5 h-5" />
-              דברי איתי בוואטסאפ
-            </Button>
-            <p className="text-xs text-gray-400">ג'ולין - AI Nail Studio</p>
+              <Sparkles className="w-4 h-4" />
+              הרשמה וקניית חבילה
+            </button>
+            <button
+              onClick={() => window.location.href = '/login'}
+              className="w-full py-3 bg-[#FFF0F2] text-[#B76E79] rounded-xl font-semibold hover:bg-[#FFE5E8] transition-colors"
+            >
+              יש לי חשבון - כניסה
+            </button>
           </div>
+
+          <p className="text-xs text-gray-400">החל מ-₪29 בלבד</p>
         </div>
       </div>
-    );
+    )
   }
-
-  // Active demo - show timer + content
-  const isWarning = remaining < 60_000;
 
   return (
     <div className="relative">
-      {/* Timer badge */}
-      <div className="fixed bottom-4 left-4 z-[90]">
-        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-lg text-sm font-medium transition-colors ${
-          isWarning
-            ? 'bg-red-500 text-white animate-pulse'
-            : 'bg-white/90 backdrop-blur-sm border border-[#F0E0E2] text-[#B76E79]'
-        }`}>
-          <Clock className="w-3.5 h-3.5" />
-          <span>{formatTime(remaining)}</span>
+      {/* Free designs counter badge */}
+      {state === 'free' && (
+        <div className="fixed bottom-4 left-4 z-[90]">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-lg text-sm font-medium bg-white/90 backdrop-blur-sm border border-[#F0E0E2] text-[#B76E79]">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{freeLeft} הדמיות חינם</span>
+          </div>
         </div>
-      </div>
+      )}
       {children}
     </div>
-  );
+  )
+}
+
+export function decrementFreeCount() {
+  const used = getFreeCount()
+  localStorage.setItem(FREE_COUNT_KEY, String(used + 1))
+}
+
+export function isFreeUser(): boolean {
+  return !isAdminOrBypass()
 }

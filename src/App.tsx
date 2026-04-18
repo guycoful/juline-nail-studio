@@ -1,57 +1,23 @@
-import { useState } from 'react'
 import { Toaster } from '@/components/ui/toaster'
 import JulineStudio from '@/components/juline/JulineStudio'
 import DemoGate from '@/components/juline/DemoGate'
+import AuthPage from '@/pages/Auth'
+import PricingPage from '@/pages/Pricing'
+import PaymentSuccessPage from '@/pages/PaymentSuccess'
 
-function AdminLogin() {
-  const [user, setUser] = useState('')
-  const [pass, setPass] = useState('')
-  const [error, setError] = useState(false)
-  const [done, setDone] = useState(false)
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (user === 'talkeren11' && pass === 'talkeren11') {
-      localStorage.setItem('juline-admin', 'true')
-      setDone(true)
-      setTimeout(() => { window.location.href = '/' }, 500)
-    } else {
-      setError(true)
-      setTimeout(() => setError(false), 1500)
-    }
-  }
-
-  if (done) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-[#FFF8F9] to-[#FFF0F2] flex items-center justify-center" dir="rtl">
-        <div className="text-[#B76E79] text-xl font-semibold">מחובר! מעביר...</div>
-      </div>
-    )
-  }
-
+function PaymentCancelPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FFF8F9] to-[#FFF0F2] flex items-center justify-center p-4" dir="rtl">
-      <form onSubmit={handleSubmit} className={`bg-white rounded-2xl border border-[#F0E0E2] shadow-lg p-8 w-full max-w-sm space-y-4 ${error ? 'animate-shake' : ''}`}>
-        <h2 className="text-xl font-bold text-center text-[#B76E79]">כניסת מנהל</h2>
-        <input
-          type="text"
-          placeholder="שם משתמש"
-          value={user}
-          onChange={e => setUser(e.target.value)}
-          className="w-full px-4 py-3 rounded-xl border border-[#F0E0E2] focus:outline-none focus:border-[#B76E79] text-sm"
-        />
-        <input
-          type="password"
-          placeholder="סיסמה"
-          value={pass}
-          onChange={e => setPass(e.target.value)}
-          className="w-full px-4 py-3 rounded-xl border border-[#F0E0E2] focus:outline-none focus:border-[#B76E79] text-sm"
-        />
-        {error && <p className="text-red-500 text-sm text-center">שם משתמש או סיסמה שגויים</p>}
-        <button type="submit" className="w-full py-3 bg-[#B76E79] text-white rounded-xl font-semibold hover:bg-[#A05D67] transition-colors">
-          כניסה
+      <div className="bg-white rounded-3xl border border-[#F0E0E2] shadow-xl p-8 max-w-sm w-full text-center space-y-6">
+        <h2 className="text-xl font-bold text-[#333]">התשלום בוטל</h2>
+        <p className="text-gray-500 text-sm">לא חויבת. תוכלי לנסות שוב בכל עת.</p>
+        <button
+          onClick={() => window.location.href = '/pricing'}
+          className="w-full py-3 bg-[#B76E79] text-white rounded-xl font-semibold hover:bg-[#A05D67] transition-colors"
+        >
+          חזרה לחבילות
         </button>
-      </form>
+      </div>
     </div>
   )
 }
@@ -62,8 +28,16 @@ export default function App() {
   return (
     <>
       <Toaster />
-      {path === '/admin' ? (
-        <AdminLogin />
+      {path === '/login' ? (
+        <AuthPage initialMode="login" />
+      ) : path === '/signup' ? (
+        <AuthPage initialMode="signup" />
+      ) : path === '/pricing' ? (
+        <PricingPage />
+      ) : path === '/payment-success' ? (
+        <PaymentSuccessPage />
+      ) : path === '/payment-cancel' ? (
+        <PaymentCancelPage />
       ) : (
         <DemoGate>
           <JulineStudio />
